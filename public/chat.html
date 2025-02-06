@@ -1,0 +1,80 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Chat Room</h2>
+        <div id="roomList">
+            <button class="btn btn-primary" onclick="joinRoom('devops')">DevOps</button>
+            <button class="btn btn-primary" onclick="joinRoom('cloud computing')">Cloud Computing</button>
+            <button class="btn btn-primary" onclick="joinRoom('covid19')">COVID-19</button>
+            <button class="btn btn-primary" onclick="joinRoom('sports')">Sports</button>
+            <button class="btn btn-primary" onclick="joinRoom('nodeJS')">NodeJS</button>
+        </div>
+        <div id="chatRoom" style="display:none">
+            <ul id="messages"></ul>
+            <input id="messageInput" autocomplete="off"><button id="sendButton">Send</button>
+            <p id="typingIndicator"></p>
+            <button onclick="leaveRoom()">Leave Room</button>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentRoom = '';
+
+        function joinRoom(room) {
+            if (currentRoom) {
+                socket.emit('leave room', currentRoom);
+            }
+            currentRoom = room;
+            socket.emit('join room', room);
+            $('#roomList').hide();
+            $('#chatRoom').show();
+            $('#messages').empty();
+        }
+
+        function leaveRoom() {
+            socket.emit('leave room', currentRoom);
+            currentRoom = '';
+            $('#roomList').show();
+            $('#chatRoom').hide();
+        }
+
+        $('#sendButton').on('click', function() {
+            const message = $('#messageInput').val();
+            const from_user = localStorage.getItem('username');
+            socket.emit('chat message', { room: currentRoom, message, from_user });
+            $('#messageInput').val('');
+        });
+
+        $('#messageInput').on('input', function() {
+            socket.emit('typing', { room: currentRoom, user: localStorage.getItem('username') });
+        });
+
+        socket.on('chat message', function(msg) {
+            const item = document.createElement('li');
+            item.textContent = `${msg.from_user}: ${msg.message}`;
+            $('#messages').append(item);
+        });
+
+        socket.on('typing', function(data) {
+            $(`#typingIndicator`).text(`${data.user} is typing...`);
+            setTimeout(() => {
+                $('#typingIndicator').text('');
+            }, 1000);
+        });
+
+        $(document).ready(function() {
+            if (!localStorage.getItem('username')) {
+                window.location.href = '/login.html';
+            }
+        });
+    </script>
+</body>
+</html>
